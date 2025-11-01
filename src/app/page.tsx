@@ -10,15 +10,29 @@ export default function Home() {
     e.preventDefault();
     setIsLoading(true);
 
-    console.log("Submitting transcript:", transcript);
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transcript }),
+      });
 
-    // --- AI LOGIC WILL GO HERE ---
-    // We'll send the 'transcript' to our backend API route.
-    
-    // For now, just simulate a network request
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    console.log("Submission complete!");
-    // --- END OF AI LOGIC ---
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      // Browser console
+      console.log('API response:', data); 
+      alert('Success! Check your VSCode terminal.');
+
+    } catch (error) {
+      console.error('Submission error:', error);
+      alert(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     setIsLoading(false);
   };
