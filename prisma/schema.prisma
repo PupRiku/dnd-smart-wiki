@@ -1,15 +1,94 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// 1. CHARACTER MODEL
+model Character {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  description   String?        @db.Text // @db.Text allows for very long strings
+  type          String?        // PC, NPC, Other
+  status        String?        // Alive, Dead, Unknown
+  species       String?
+  class         String?        // e.g., "Fighter", "Rogue/Wizard"
+  level         Int?
+  hp            Int?
+  ac            Int?
+  originId      String?        // This is the foreign key
+  origin        Location?      @relation("CharacterOrigin", fields: [originId], references: [id])
+  organizations Organization[] // A character can be in many organizations
+  leaderOf      Organization?  @relation("OrganizationLeader") // A character can be a leader of one organization
+  sessions      SessionSummary[] // A character can be in many sessions
+}
+
+// 2. LOCATION MODEL
+model Location {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  description     String?        @db.Text
+  type            String?        // City, Region, Dungeon, Building
+  foundingYear    String?        // Use String to allow "1072 DR"
+  characters      Character[]    @relation("CharacterOrigin")
+  organizations   Organization[] @relation("OrganizationHeadquarters")
+  sessions        SessionSummary[] // A location can be in many sessions
+}
+
+// 3. ORGANIZATION MODEL
+model Organization {
+  id             String         @id @default(uuid())
+  name           String         @unique
+  description    String?        @db.Text
+  type           String?        // Faction, Guild, Religion
+  status         String?        // Active, Defunct, Hidden
+  founding       String?
+  leaderId       String?        @unique // Make it unique so one person leads one org
+  leader         Character?     @relation("OrganizationLeader", fields: [leaderId], references: [id])
+  headquartersId String?
+  headquarters   Location?      @relation("OrganizationHeadquarters", fields: [headquartersId], references: [id])
+  members        Character[]    // An organization can have many members
+}
+
+// 4. ITEM MODEL
+model Item {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?        @db.Text
+  type        String?        // Weapon, Armor, Potion, Quest Item
+  rarity      String?        // Common, Uncommon, Rare...
+  sessions    SessionSummary[] // An item can appear in many sessions
+}
+
+// 5. LORE MODEL
+model Lore {
+  id          String         @id @default(uuid())
+  title       String         @unique
+  description String?        @db.Text
+  type        String?        // Historical Event, Concept, Deity
+  sessions    SessionSummary[] // A lore entry can be relevant to many sessions
+}
+
+// 6. SESSION SUMMARY MODEL
+model SessionSummary {
+  id                String      @id @default(uuid())
+  sessionNumber     Int         @unique
+  title             String?
+  inGameDate        String?
+  recap             String?     @db.Text
+  notableQuotes     String[]    // This is an array of strings
+  outline           String?     @db.Text
+  notes             String?     @db.Text
+  
+  // Many-to-many relations
+  charactersPresent Character[]
+  locationsVisited  Location[]
+  itemsFound        Item[]
+  loreEntries       Lore[]
 }
