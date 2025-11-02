@@ -82,7 +82,7 @@ model SessionSummary {
   title             String?
   inGameDate        String?
   recap             String?     @db.Text
-  notableQuotes     String[]    // This is an array of strings
+  notableQuotes     Json?       // Store as a JSON object
   outline           String?     @db.Text
   notes             String?     @db.Text
   
