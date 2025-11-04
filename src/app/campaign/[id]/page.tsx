@@ -60,6 +60,12 @@ export default async function CampaignPage({
               >
                 Locations
               </Link>
+              <Link
+                href={`/campaign/${campaign.id}/organizations`}
+                className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Organizations
+              </Link>
             </nav>
           </div>
 
