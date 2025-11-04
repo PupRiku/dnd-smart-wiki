@@ -29,15 +29,15 @@ export default async function Home() {
                 </p>
               ) : (
                 campaigns.map((campaign) => (
-                  <div
+                  <Link
                     key={campaign.id}
+                    href={`/campaign/${campaign.id}`}
                     className="block p-4 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
                   >
-                    {/* This will be a link later */}
                     <h3 className="text-xl font-semibold text-white">
                       {campaign.name}
                     </h3>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
