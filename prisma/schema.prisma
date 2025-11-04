@@ -13,38 +13,61 @@ datasource db {
 // 1. CHARACTER MODEL
 model Character {
   id            String         @id @default(uuid())
-  name          String         @unique
-  description   String?        @db.Text // @db.Text allows for very long strings
-  type          String?        // PC, NPC, Other
-  status        String?        // Alive, Dead, Unknown
+  name          String         
+  description   String?        @db.Text 
+  type          String?        
+  status        String?        
   species       String?
-  class         String?        // e.g., "Fighter", "Rogue/Wizard"
+  class         String?        
   level         Int?
   hp            Int?
   ac            Int?
-  originId      String?        // This is the foreign key
+  // --- Stat Block ---
+  strength     Int?
+  dexterity    Int?
+  constitution Int?
+  intelligence Int?
+  wisdom       Int?
+  charisma     Int?
+
+  // --- Other Details ---
+  spells       Json? // To store a list of spells
+  weapons      Json? // To store a list of weapons/attacks
+  originId      String?        
   origin        Location?      @relation("CharacterOrigin", fields: [originId], references: [id])
-  organizations Organization[] // A character can be in many organizations
-  leaderOf      Organization?  @relation("OrganizationLeader") // A character can be a leader of one organization
-  sessions      SessionSummary[] // A character can be in many sessions
+  organizations Organization[] 
+  leaderOf      Organization?  @relation("OrganizationLeader") 
+  sessions      SessionSummary[] 
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([name, campaignId])
 }
 
 // 2. LOCATION MODEL
 model Location {
   id              String         @id @default(uuid())
-  name            String         @unique
+  name            String         
   description     String?        @db.Text
   type            String?        // City, Region, Dungeon, Building
   foundingYear    String?        // Use String to allow "1072 DR"
   characters      Character[]    @relation("CharacterOrigin")
   organizations   Organization[] @relation("OrganizationHeadquarters")
   sessions        SessionSummary[] // A location can be in many sessions
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([name, campaignId])
 }
 
 // 3. ORGANIZATION MODEL
 model Organization {
   id             String         @id @default(uuid())
-  name           String         @unique
+  name           String         
   description    String?        @db.Text
   type           String?        // Faction, Guild, Religion
   status         String?        // Active, Defunct, Hidden
@@ -54,41 +77,83 @@ model Organization {
   headquartersId String?
   headquarters   Location?      @relation("OrganizationHeadquarters", fields: [headquartersId], references: [id])
   members        Character[]    // An organization can have many members
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([name, campaignId])
 }
 
 // 4. ITEM MODEL
 model Item {
   id          String         @id @default(uuid())
-  name        String         @unique
+  name        String         
   description String?        @db.Text
   type        String?        // Weapon, Armor, Potion, Quest Item
   rarity      String?        // Common, Uncommon, Rare...
   sessions    SessionSummary[] // An item can appear in many sessions
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([name, campaignId])
 }
 
 // 5. LORE MODEL
 model Lore {
   id          String         @id @default(uuid())
-  title       String         @unique
+  title       String         
   description String?        @db.Text
   type        String?        // Historical Event, Concept, Deity
   sessions    SessionSummary[] // A lore entry can be relevant to many sessions
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([title, campaignId])
 }
 
 // 6. SESSION SUMMARY MODEL
 model SessionSummary {
   id                String      @id @default(uuid())
-  sessionNumber     Int         @unique
+  sessionNumber     Int         
   title             String?
   inGameDate        String?
   recap             String?     @db.Text
   notableQuotes     Json?       // Store as a JSON object
   outline           String?     @db.Text
   notes             String?     @db.Text
+
+  // Storybook Feature
+  chapterTitle      String?
   
   // Many-to-many relations
   charactersPresent Character[]
   locationsVisited  Location[]
   itemsFound        Item[]
   loreEntries       Lore[]
+
+  // Relation to Campaign
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([sessionNumber, campaignId])
+}
+
+// 7. CAMPAIGN MODEL
+model Campaign {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  description   String?        @db.Text
+  
+  // --- This campaign has all of these: ---
+  characters    Character[]
+  locations     Location[]
+  organizations Organization[]
+  items         Item[]
+  loreEntries   Lore[]
+  sessions      SessionSummary[]
 }
