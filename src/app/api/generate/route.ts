@@ -1,9 +1,27 @@
-import { NextResponse } from "next/server";
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { NextResponse } from 'next/server';
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
+import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 // --- DEFINE TYPESCRIPT INTERFACES ---
+interface CharacterEntity {
+  name: string;
+  description: string;
+  type?: string;
+  status?: string;
+  species?: string;
+  class?: string;
+  level?: number;
+  hp?: number;
+  ac?: number;
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
+}
+
 // This helps TypeScript understand the shape of the AI's JSON output
 interface WikiEntity {
   name?: string; // Used by most
@@ -19,12 +37,15 @@ interface NotableQuote {
 
 interface SessionSummaryData {
   title: string;
-  recap: string;
+  recap: string; // This will now be the long "Storybook" recap
+  chapterTitle?: string; // Optional new field
+  outline?: string; // Optional field
+  notes?: string; // Optional field
   notableQuotes: NotableQuote[];
 }
 
 interface ParsedAiResponse {
-  characters: WikiEntity[];
+  characters: CharacterEntity[]; // Use the new detailed interface
   locations: WikiEntity[];
   organizations: WikiEntity[];
   items: WikiEntity[];
@@ -56,36 +77,55 @@ export async function POST(request: Request) {
     apiKey: process.env.GEMINI_API_KEY as string,
   });
 
+  let aiResponseText: string | null = null;
+  let result: any = null; // To store the result for error logging
+
   try {
     const body = await request.json();
-    const { transcript } = body;
+    const { transcript, campaignName } = body;
 
     if (!transcript) {
       return NextResponse.json(
-        { error: "Transcript is required" },
+        { error: 'Transcript is required' },
+        { status: 400 }
+      );
+    }
+    if (!campaignName) {
+      return NextResponse.json(
+        { error: 'Campaign name is required' },
         { status: 400 }
       );
     }
 
-    // --- 2. Build the Master Prompt ---
+    // --- Get or create the campaign ---
+    const campaign = await prisma.campaign.upsert({
+      where: { name: campaignName },
+      update: {},
+      create: { name: campaignName },
+    });
+    const campaignId = campaign.id;
+
+    // --- Build the Master Prompt ---
     const prompt = `
-      You are a meticulous D&D campaign assistant. Your task is to read the following game session transcript and extract all relevant entities.
+      You are a fantasy novelist and meticulous D&D campaign assistant. 
+      Your task is to read the following game session transcript and extract all relevant entities into a JSON object.
       You must return ONLY a single, valid JSON object (no other text, no "json" markdown wrapper).
       
       The JSON object should have 6 top-level keys: "characters", "locations", "organizations", "items", "lore", and "sessionSummary".
-      
-      - "characters": An array of objects. Each object must have a "name" (string) and a "description" (string, a brief summary of their actions or new info learned).
-      - "locations": An array of objects. Each object must have a "name" (string) and a "description" (string, what happened here or what was learned about it).
-      - "organizations": An array of objects. Each object must have a "name" (string) and a "description" (string, any new info about the faction/group).
-      - "items": An array of objects. Each object must have a "name" (string) and a "description" (string, what the item is, what it does, or what happened to it).
-      - "lore": An array of objects. Each object must have a "title" (string, e.g., "The Spellplague") and a "description" (string, what was learned).
-      - "sessionSummary": A single object (not an array) with:
-          - "title": A creative title for the session.
-          - "recap": A detailed narrative summary of the session's events.
-          - "notableQuotes": An array of objects. Each object must have three keys: "quote" (the full quote), "speaker" (who said it), and "context" (a brief description of the situation). Do not include duplicate quotes.
 
-      If you find no entities for a category, return an empty array [].
-      Do not invent information. Only use details from the transcript.
+      RULES FOR ENTITIES (characters, locations, organizations, items, lore):
+      - "name" or "title": The unique name of the entity.
+      - "description": A detailed summary of their actions, new information learned, or historical context from the transcript.
+      - "characters" ONLY: If mentioned, include these *exact* fields: 'type' ('PC' or 'NPC'), 'species' (the character's race, e.g., 'Half-elf'), 'class', 'level', 'hp', 'ac', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'.
+      - **IMPORTANT FOR CHARACTERS**: For any number-based fields ('level', 'hp', 'ac', stats), if the information is unknown or not mentioned, you **must** omit the field or set its value to 'null'. Do **NOT** use strings like "N/A".
+
+      RULES FOR "sessionSummary":
+      - "title": A creative, short title for this specific session.
+      - "recap": This is the MOST IMPORTANT. Write a long, novelistic, and highly detailed "Storybook" chapter of the session's events. Write it in the past tense, as if it were a fantasy novel. Use descriptive language, capture character emotions, and detail actions in a 'show, don't tell' style. Make it a long, engaging read.
+      - "chapterTitle": (Optional) If the session seems to end at a natural "chapter break" in the story, suggest a title for the chapter that just concluded (e.g., "The Fall of Greendale").
+      - "outline": A brief, bulleted list of the key events that happened.
+      - "notes": Any miscellaneous notes or DM reminders found in the transcript.
+      - "notableQuotes": An array of objects. Each object must have "quote", "speaker", and "context". Do not include duplicate quotes.
 
       Here is the transcript:
       ---
@@ -93,15 +133,15 @@ export async function POST(request: Request) {
       ---
     `;
 
-    // --- 3. Call the Gemini API ---
+    // --- Call the Gemini API ---
     const generationConfig = {
-      responseMimeType: "application/json",
+      responseMimeType: 'application/json',
       temperature: 0.7,
     };
 
     const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       ...generationConfig,
       config: {
         safetySettings: safetySettings,
@@ -111,43 +151,85 @@ export async function POST(request: Request) {
     const aiResponseText = result.text ?? null;
 
     if (!aiResponseText) {
-      throw new Error("AI returned no text.");
+      throw new Error('AI returned no text.');
     }
 
-    // --- 4. PARSE AND SAVE TO DATABASE ---
-    // We are now adding all the Prisma logic
-    const cleanedJsonText = aiResponseText
-      .replace(/^```json\n/, "") // Remove opening tag
-      .replace(/\n```$/, "") // Remove closing tag
-      .trim(); // Trim whitespace
+    // --- PARSE AND SAVE TO DATABASE ---
+    // Use a regex to find the first '{' and the last '}'
+    const match = aiResponseText.match(/{[\s\S]*}/);
 
-    const data: ParsedAiResponse = JSON.parse(cleanedJsonText); // Use the cleaned text
+    if (!match) {
+      // If we can't find any JSON, throw an error and log the bad response.
+      console.error('--- AI RESPONSE (NO JSON FOUND) ---');
+      console.log(aiResponseText);
+      throw new Error('AI response did not contain a valid JSON object.');
+    }
+
+    const cleanedJsonText = match[0];
+
+    const data: ParsedAiResponse = JSON.parse(cleanedJsonText);
 
     // We use a transaction to ensure that all data is saved,
     // or none of it is, if an error occurs.
     const newSession = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         // Step A: Upsert all entities (Characters, Locations, etc.)
-        // We do these in parallel for speed.
 
-        //CHARACTERS
+        // CHARACTERS
         await Promise.all(
-          data.characters.map((char) =>
-            tx.character.upsert({
-              where: { name: char.name! },
-              update: { description: char.description },
-              create: { name: char.name!, description: char.description },
-            })
-          )
+          data.characters.map((char) => {
+            // Helper function to clean number fields
+            // It checks if a value is a valid number, otherwise returns null
+            const sanitizeInt = (value: any): number | null => {
+              const num = parseInt(value, 10);
+              return isNaN(num) ? null : num;
+            };
+
+            // Explicitly map fields and sanitize all number fields
+            const characterData = {
+              description: char.description,
+              type: char.type,
+              status: char.status,
+              species: char.species,
+              class: char.class,
+              level: sanitizeInt(char.level), // <-- SANITIZE
+              hp: sanitizeInt(char.hp), // <-- SANITIZE
+              ac: sanitizeInt(char.ac), // <-- SANITIZE
+              strength: sanitizeInt(char.strength),
+              dexterity: sanitizeInt(char.dexterity),
+              constitution: sanitizeInt(char.constitution),
+              intelligence: sanitizeInt(char.intelligence),
+              wisdom: sanitizeInt(char.wisdom),
+              charisma: sanitizeInt(char.charisma),
+            };
+
+            return tx.character.upsert({
+              where: {
+                name_campaignId: { name: char.name, campaignId: campaignId },
+              },
+              update: characterData, // Update with clean, sanitized data
+              create: {
+                name: char.name,
+                ...characterData, // Create with clean, sanitized data
+                campaignId: campaignId,
+              },
+            });
+          })
         );
 
         // LOCATIONS
         await Promise.all(
           data.locations.map((loc) =>
             tx.location.upsert({
-              where: { name: loc.name! },
+              where: {
+                name_campaignId: { name: loc.name!, campaignId: campaignId },
+              },
               update: { description: loc.description },
-              create: { name: loc.name!, description: loc.description },
+              create: {
+                name: loc.name!,
+                description: loc.description,
+                campaignId: campaignId,
+              },
             })
           )
         );
@@ -156,9 +238,15 @@ export async function POST(request: Request) {
         await Promise.all(
           data.organizations.map((org) =>
             tx.organization.upsert({
-              where: { name: org.name! },
+              where: {
+                name_campaignId: { name: org.name!, campaignId: campaignId },
+              },
               update: { description: org.description },
-              create: { name: org.name!, description: org.description },
+              create: {
+                name: org.name!,
+                description: org.description,
+                campaignId: campaignId,
+              },
             })
           )
         );
@@ -167,30 +255,45 @@ export async function POST(request: Request) {
         await Promise.all(
           data.items.map((item) =>
             tx.item.upsert({
-              where: { name: item.name! },
+              where: {
+                name_campaignId: { name: item.name!, campaignId: campaignId },
+              },
               update: { description: item.description },
-              create: { name: item.name!, description: item.description },
-            })
-          )
-        );
-
-        // LORE (uses 'title' instead of 'name')
-        await Promise.all(
-          data.lore.map((loreEntry) =>
-            tx.lore.upsert({
-              where: { title: loreEntry.title! },
-              update: { description: loreEntry.description },
               create: {
-                title: loreEntry.title!,
-                description: loreEntry.description,
+                name: item.name!,
+                description: item.description,
+                campaignId: campaignId,
               },
             })
           )
         );
 
+        // LORE
+        await Promise.all(
+          data.lore
+            .filter((loreEntry) => !!loreEntry.title) // <-- Add this filter step
+            .map((loreEntry) =>
+              tx.lore.upsert({
+                where: {
+                  title_campaignId: {
+                    title: loreEntry.title!,
+                    campaignId: campaignId,
+                  },
+                },
+                update: { description: loreEntry.description },
+                create: {
+                  title: loreEntry.title!,
+                  description: loreEntry.description,
+                  campaignId: campaignId,
+                },
+              })
+            )
+        );
+
         // Step B: Get the next session number
         const lastSession = await tx.sessionSummary.findFirst({
-          orderBy: { sessionNumber: "desc" },
+          where: { campaignId: campaignId }, // <-- Filter by campaign
+          orderBy: { sessionNumber: 'desc' },
         });
         const nextSessionNumber = (lastSession?.sessionNumber || 0) + 1;
 
@@ -200,24 +303,44 @@ export async function POST(request: Request) {
             sessionNumber: nextSessionNumber,
             title: data.sessionSummary.title,
             recap: data.sessionSummary.recap,
+            chapterTitle: data.sessionSummary.chapterTitle,
 
-            // notableQuotes is now an array of objects, which Prisma stores as JSON
+            outline: Array.isArray(data.sessionSummary.outline)
+              ? data.sessionSummary.outline.join('\n- ') // Join with newlines/bullets
+              : data.sessionSummary.outline,
+
+            notes: Array.isArray(data.sessionSummary.notes)
+              ? data.sessionSummary.notes.join('\n- ') // Join with newlines/bullets
+              : data.sessionSummary.notes,
+
             notableQuotes: data.sessionSummary
               .notableQuotes as unknown as Prisma.InputJsonValue,
 
-            // --- This is the relational magic ---
-            // We connect this session to all the entities we just upserted.
+            campaignId: campaignId,
+
+            // Connect all the entities
             charactersPresent: {
-              connect: data.characters.map((c) => ({ name: c.name! })),
+              connect: data.characters.map((c) => ({
+                name_campaignId: { name: c.name!, campaignId: campaignId },
+              })),
             },
             locationsVisited: {
-              connect: data.locations.map((l) => ({ name: l.name! })),
+              connect: data.locations.map((l) => ({
+                name_campaignId: { name: l.name!, campaignId: campaignId },
+              })),
             },
             itemsFound: {
-              connect: data.items.map((i) => ({ name: i.name! })),
+              connect: data.items.map((i) => ({
+                name_campaignId: { name: i.name!, campaignId: campaignId },
+              })),
             },
+
             loreEntries: {
-              connect: data.lore.map((l) => ({ title: l.title! })),
+              connect: data.lore
+                .filter((l) => !!l.title)
+                .map((l) => ({
+                  title_campaignId: { title: l.title!, campaignId: campaignId },
+                })),
             },
           },
         });
@@ -226,30 +349,30 @@ export async function POST(request: Request) {
       }
     );
 
-    // --- 5. Log and Send Response ---
-    console.log("--- Database Save Complete! ---");
-    console.log(newSession);
-    console.log("-------------------------------");
+    // --- Log and Send Response ---
+    console.log('--- Database Save Complete! ---');
+    console.log(`Campaign: ${campaign.name} (ID: ${campaign.id})`);
+    console.log(
+      `New Session: ${newSession.title} (Number: ${newSession.sessionNumber})`
+    );
+    console.log('-------------------------------');
 
     return NextResponse.json({
-      message: "AI processing and database save complete!",
-      session: newSession, // Send the new session data back to the browser
+      message: 'AI processing and database save complete!',
+      session: newSession,
     });
   } catch (error) {
-    // Log the error for debugging
-    console.error("--- API ERROR ---", error);
+    console.error('--- API ERROR ---', error);
 
-    // Send a more specific error message back to the client
     const errorMessage =
-      error instanceof Error ? error.message : "An unknown error occurred";
+      error instanceof Error ? error.message : 'An unknown error occurred';
 
-    // Check for JSON parsing error
     if (error instanceof SyntaxError) {
-      console.error("--- AI RESPONSE (NOT VALID JSON) ---");
-      // We can't log aiResponseText here because it's out of scope,
-      // but the server logs from the 'catch' will be enough.
+      console.error('--- AI RESPONSE (NOT VALID JSON) ---');
+      // Use the 'result' variable we saved earlier to log the bad response
+      console.log(result?.text ?? 'No AI text available on SyntaxError');
       return NextResponse.json(
-        { error: "AI returned invalid JSON. Check terminal for AI output." },
+        { error: 'AI returned invalid JSON. Check terminal for AI output.' },
         { status: 500 }
       );
     }
