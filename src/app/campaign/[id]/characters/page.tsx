@@ -31,6 +31,31 @@ export default async function CharactersPage({
     notFound();
   }
 
+  // --- 4. NEW: Filter characters into PCs and NPCs ---
+  const pcs = campaign.characters.filter(
+    (char) => char.type?.toLowerCase() === 'pc'
+  );
+
+  // Group everyone else as an NPC/Other
+  const npcs = campaign.characters.filter(
+    (char) => char.type?.toLowerCase() !== 'pc'
+  );
+
+  // Helper function to render a character card
+  const CharacterCard = (character: any) => (
+    <div key={character.id} className="p-6 bg-gray-800 rounded-lg shadow-md">
+      <h3 className="text-2xl font-semibold text-white mb-2">
+        {character.name}
+      </h3>
+      <p className="text-gray-300 text-sm mb-1 capitalize">
+        {/* Combine species and class, filtering out nulls */}
+        {[character.species, character.class].filter(Boolean).join(' | ')}
+      </p>
+      <p className="text-gray-400 mt-4 line-clamp-3">{character.description}</p>
+      {/* This will be our edit link later */}
+    </div>
+  );
+
   // 4. Render the page
   return (
     <main className="flex min-h-screen flex-col items-center p-24">
@@ -44,34 +69,37 @@ export default async function CharactersPage({
         </Link>
         <h1 className="text-5xl font-bold my-8">{campaign.name}: Characters</h1>
 
-        {/* --- Character List --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {campaign.characters.length === 0 ? (
-            <p className="text-gray-400">
-              No characters found for this campaign yet.
-            </p>
-          ) : (
-            campaign.characters.map((character) => (
-              <div
-                key={character.id}
-                className="p-6 bg-gray-800 rounded-lg shadow-md"
-              >
-                <h3 className="text-2xl font-semibold text-white mb-2">
-                  {character.name}
-                </h3>
-                <p className="text-gray-300 text-sm mb-1">
-                  {character.type ? `${character.type} | ` : ''}
-                  {character.species ? `${character.species} | ` : ''}
-                  {character.class ? character.class : ''}
-                </p>
-                <p className="text-gray-400 mt-4 line-clamp-3">
-                  {character.description}
-                </p>
-                {/* This will be our edit link later */}
-              </div>
-            ))
-          )}
-        </div>
+        {/* --- Player Characters List --- */}
+        <section>
+          <h2 className="text-3xl font-semibold mb-6 border-b border-gray-700 pb-2">
+            Player Characters
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pcs.length === 0 ? (
+              <p className="text-gray-400 col-span-full">
+                No player characters found for this campaign yet.
+              </p>
+            ) : (
+              pcs.map(CharacterCard)
+            )}
+          </div>
+        </section>
+
+        {/* --- NPCs & Other Beings List --- */}
+        <section className="mt-12">
+          <h2 className="text-3xl font-semibold mb-6 border-b border-gray-700 pb-2">
+            NPCs & Other Beings
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {npcs.length === 0 ? (
+              <p className="text-gray-400 col-span-full">
+                No NPCs found for this campaign yet.
+              </p>
+            ) : (
+              npcs.map(CharacterCard)
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );
