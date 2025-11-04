@@ -107,6 +107,7 @@ model Lore {
   title       String         
   description String?        @db.Text
   type        String?        // Historical Event, Concept, Deity
+  tag         String?
   sessions    SessionSummary[] // A lore entry can be relevant to many sessions
 
   // Relation to Campaign
