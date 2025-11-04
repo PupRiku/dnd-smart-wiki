@@ -72,6 +72,12 @@ export default async function CampaignPage({
               >
                 Items
               </Link>
+              <Link
+                href={`/campaign/${campaign.id}/lore`}
+                className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Lore
+              </Link>
             </nav>
           </div>
 
