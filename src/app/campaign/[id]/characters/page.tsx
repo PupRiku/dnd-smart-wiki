@@ -43,7 +43,11 @@ export default async function CharactersPage({
 
   // Helper function to render a character card
   const CharacterCard = (character: any) => (
-    <div key={character.id} className="p-6 bg-gray-800 rounded-lg shadow-md">
+    <Link
+      key={character.id}
+      href={`/campaign/${params.id}/characters/${character.id}`} // <-- This is the new link
+      className="block p-6 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
+    >
       <h3 className="text-2xl font-semibold text-white mb-2">
         {character.name}
       </h3>
@@ -52,8 +56,7 @@ export default async function CharactersPage({
         {[character.species, character.class].filter(Boolean).join(' | ')}
       </p>
       <p className="text-gray-400 mt-4 line-clamp-3">{character.description}</p>
-      {/* This will be our edit link later */}
-    </div>
+    </Link>
   );
 
   // 4. Render the page
