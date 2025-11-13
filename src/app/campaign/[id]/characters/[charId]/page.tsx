@@ -212,6 +212,156 @@ export default function EditCharacterPage() {
             </div>
           </div>
 
+          {/* --- Level, HP, AC, Status --- */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div>
+              <label
+                htmlFor="level"
+                className="block text-sm font-medium text-gray-300"
+              >
+                Level
+              </label>
+              <input
+                type="number"
+                id="level"
+                name="level"
+                value={formData.level ?? ''}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="hp"
+                className="block text-sm font-medium text-gray-300"
+              >
+                HP
+              </label>
+              <input
+                type="number"
+                id="hp"
+                name="hp"
+                value={formData.hp ?? ''}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="ac"
+                className="block text-sm font-medium text-gray-300"
+              >
+                AC
+              </label>
+              <input
+                type="number"
+                id="ac"
+                name="ac"
+                value={formData.ac ?? ''}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="status"
+                className="block text-sm font-medium text-gray-300"
+              >
+                Status
+              </label>
+              <input
+                type="text"
+                id="status"
+                name="status"
+                value={formData.status ?? ''}
+                onChange={handleChange}
+                placeholder="e.g., Alive, Deceased"
+                className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* --- Stat Block --- */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300">
+              Ability Scores
+            </label>
+            <div className="mt-1 grid grid-cols-3 md:grid-cols-6 gap-4">
+              {/* STR */}
+              <div>
+                <input
+                  type="number"
+                  id="strength"
+                  name="strength"
+                  value={formData.strength ?? ''}
+                  onChange={handleChange}
+                  placeholder="STR"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* DEX */}
+              <div>
+                <input
+                  type="number"
+                  id="dexterity"
+                  name="dexterity"
+                  value={formData.dexterity ?? ''}
+                  onChange={handleChange}
+                  placeholder="DEX"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* CON */}
+              <div>
+                <input
+                  type="number"
+                  id="constitution"
+                  name="constitution"
+                  value={formData.constitution ?? ''}
+                  onChange={handleChange}
+                  placeholder="CON"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* INT */}
+              <div>
+                <input
+                  type="number"
+                  id="intelligence"
+                  name="intelligence"
+                  value={formData.intelligence ?? ''}
+                  onChange={handleChange}
+                  placeholder="INT"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* WIS */}
+              <div>
+                <input
+                  type="number"
+                  id="wisdom"
+                  name="wisdom"
+                  value={formData.wisdom ?? ''}
+                  onChange={handleChange}
+                  placeholder="WIS"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* CHA */}
+              <div>
+                <input
+                  type="number"
+                  id="charisma"
+                  name="charisma"
+                  value={formData.charisma ?? ''}
+                  onChange={handleChange}
+                  placeholder="CHA"
+                  className="block w-full rounded-md border-gray-600 bg-gray-800 p-3 text-center shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* --- Form Actions --- */}
           <div className="flex justify-end pt-4">
             <button
