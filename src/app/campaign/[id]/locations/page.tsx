@@ -52,9 +52,10 @@ export default async function LocationsPage({
             </p>
           ) : (
             campaign.locations.map((location) => (
-              <div
+              <Link
                 key={location.id}
-                className="p-6 bg-gray-800 rounded-lg shadow-md"
+                href={`/campaign/${params.id}/locations/${location.id}`}
+                className="block p-6 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
               >
                 <h3 className="text-2xl font-semibold text-white mb-2">
                   {location.name}
@@ -67,8 +68,7 @@ export default async function LocationsPage({
                 <p className="text-gray-400 mt-4 line-clamp-4">
                   {location.description}
                 </p>
-                {/* This will be our edit link later */}
-              </div>
+              </Link>
             ))
           )}
         </div>
