@@ -91,9 +91,10 @@ export default async function CampaignPage({
                 <p className="text-gray-400">No sessions yet.</p>
               ) : (
                 campaign.sessions.map((session) => (
-                  <div
+                  <Link
                     key={session.id}
-                    className="p-4 bg-gray-800 rounded-lg shadow"
+                    href={`/campaign/${params.id}/session/${session.id}`}
+                    className="block p-4 bg-gray-800 rounded-lg shadow hover:bg-gray-700 transition-colors"
                   >
                     <h3 className="text-xl font-semibold text-white">
                       Session {session.sessionNumber}: {session.title}
@@ -103,7 +104,7 @@ export default async function CampaignPage({
                         {session.chapterTitle}
                       </p>
                     )}
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
