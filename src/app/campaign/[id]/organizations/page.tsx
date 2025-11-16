@@ -54,9 +54,10 @@ export default async function OrganizationsPage({
             </p>
           ) : (
             campaign.organizations.map((org) => (
-              <div
+              <Link
                 key={org.id}
-                className="p-6 bg-gray-800 rounded-lg shadow-md"
+                href={`/campaign/${params.id}/organizations/${org.id}`}
+                className="block p-6 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
               >
                 <h3 className="text-2xl font-semibold text-white mb-2">
                   {org.name}
@@ -69,8 +70,7 @@ export default async function OrganizationsPage({
                 <p className="text-gray-400 mt-4 line-clamp-4">
                   {org.description}
                 </p>
-                {/* This will be our edit link later */}
-              </div>
+              </Link>
             ))
           )}
         </div>
