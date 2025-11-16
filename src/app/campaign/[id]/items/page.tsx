@@ -52,9 +52,10 @@ export default async function ItemsPage({
             </p>
           ) : (
             campaign.items.map((item) => (
-              <div
+              <Link
                 key={item.id}
-                className="p-6 bg-gray-800 rounded-lg shadow-md"
+                href={`/campaign/${params.id}/items/${item.id}`}
+                className="block p-6 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
               >
                 <h3 className="text-2xl font-semibold text-white mb-2">
                   {item.name}
@@ -66,8 +67,7 @@ export default async function ItemsPage({
                 <p className="text-gray-400 mt-4 line-clamp-4">
                   {item.description}
                 </p>
-                {/* This will be our edit link later */}
-              </div>
+              </Link>
             ))
           )}
         </div>
