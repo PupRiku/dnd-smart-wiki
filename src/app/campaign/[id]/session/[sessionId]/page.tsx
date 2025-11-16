@@ -54,7 +54,15 @@ export default async function SessionPage({
           <p className="whitespace-pre-wrap">{session.recap}</p>
         </article>
 
-        {/* We can add an 'Edit' button here later */}
+        {/* --- Edit Button --- */}
+        <div className="mt-12 flex justify-end">
+          <Link
+            href={`/campaign/${params.id}/session/${session.id}/edit`}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+          >
+            Edit Session
+          </Link>
+        </div>
       </div>
     </main>
   );
