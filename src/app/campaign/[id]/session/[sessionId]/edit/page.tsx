@@ -3,7 +3,8 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { type SessionSummary } from '@prisma/client'; // Import the SessionSummary type
+import { type SessionSummary } from '@prisma/client';
+import ScrybeQuillModal from '@/components/ScrybeQuillModal'; // <-- IMPORT MODAL
 
 // Define a type for our form data
 type SessionFormData = Partial<SessionSummary>;
@@ -18,14 +19,18 @@ export default function EditSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- NEW STATE FOR MODAL ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+
   // Fetch the session data when the page loads
   useEffect(() => {
     if (sessionId) {
       setIsLoading(true);
-      fetch(`/api/sessions/${sessionId}`) // We will create this API route next
+      fetch(`/api/sessions/${sessionId}`)
         .then((res) => res.json())
         .then((data: SessionSummary) => {
-          setFormData(data); // Load fetched data into our form state
+          setFormData(data);
           setIsLoading(false);
         })
         .catch((err) => {
@@ -35,7 +40,6 @@ export default function EditSessionPage() {
     }
   }, [sessionId]);
 
-  // Handle form input changes
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -46,14 +50,56 @@ export default function EditSessionPage() {
     }));
   };
 
-  // Handle the form submission
+  // --- NEW: Handle the Scrybe Quill Import ---
+  const handleScrybeQuillSubmit = async (sqData: {
+    recap: string;
+    outline: string;
+    quotes: string;
+    notes: string;
+  }) => {
+    setIsEnhancing(true);
+    try {
+      // We send the SQ data AND the current Storybook recap to the API
+      const response = await fetch(`/api/sessions/${sessionId}/enhance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...sqData,
+          currentStorybook: formData.recap, // Send current text for context
+          campaignId: campaignId, // Needed for wiki upserts
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to enhance session.');
+      }
+
+      const result = await response.json();
+
+      // Update the form with the NEW, enhanced data
+      setFormData((prev) => ({
+        ...prev,
+        recap: result.enhancedRecap, // The AI merged version
+        outline: result.outline, // The SQ outline
+        notes: result.notes, // The SQ notes
+      }));
+
+      alert('Session enhanced and Wiki updated successfully!');
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      alert('Error enhancing session.');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
-        // We will create this API route next
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +113,6 @@ export default function EditSessionPage() {
       }
 
       alert('Changes saved!');
-      // Go back to the session "read" page
       router.push(`/campaign/${campaignId}/session/${sessionId}`);
       router.refresh();
     } catch (error) {
@@ -104,9 +149,16 @@ export default function EditSessionPage() {
     );
   }
 
-  // Render the form
   return (
     <main className="flex min-h-screen flex-col items-center p-24">
+      {/* --- Render the Modal --- */}
+      <ScrybeQuillModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleScrybeQuillSubmit}
+        isEnhancing={isEnhancing}
+      />
+
       <div className="w-full max-w-4xl">
         <Link
           href={`/campaign/${campaignId}/session/${sessionId}`}
@@ -114,9 +166,20 @@ export default function EditSessionPage() {
         >
           &larr; Back to Session
         </Link>
-        <h1 className="text-5xl font-bold my-8">
-          Edit Session {formData.sessionNumber}: {formData.title}
-        </h1>
+
+        {/* --- Header with Import Button --- */}
+        <div className="flex justify-between items-center my-8">
+          <h1 className="text-5xl font-bold">
+            Edit Session {formData.sessionNumber}
+          </h1>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700"
+          >
+            Import from Scrybe Quill
+          </button>
+        </div>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* --- Title & Chapter Title --- */}
@@ -166,7 +229,7 @@ export default function EditSessionPage() {
             <textarea
               id="recap"
               name="recap"
-              rows={20} // Make this one nice and big
+              rows={20}
               value={formData.recap ?? ''}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -208,8 +271,6 @@ export default function EditSessionPage() {
               className="mt-1 block w-full rounded-md border-gray-600 bg-gray-800 p-3 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
-
-          {/* Note: Editing NotableQuotes is complex, we'll skip it for now */}
 
           {/* --- Form Actions --- */}
           <div className="flex justify-end pt-4">
