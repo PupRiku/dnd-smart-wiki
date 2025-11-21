@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// This function handles GET requests to /api/organizations/[orgId]
+// GET: Fetch organization WITH relations
 export async function GET(
   request: Request,
   { params: paramsPromise }: { params: Promise<{ orgId: string }> }
@@ -18,8 +18,11 @@ export async function GET(
     }
 
     const organization = await prisma.organization.findUnique({
-      where: {
-        id: orgId,
+      where: { id: orgId },
+      include: {
+        leader: true, // Include full Leader object
+        headquarters: true, // Include full HQ object
+        members: true, // Include array of Member objects
       },
     });
 
@@ -34,13 +37,13 @@ export async function GET(
   } catch (error) {
     console.error('--- API GET ORGANIZATION ERROR ---', error);
     return NextResponse.json(
-      { error: 'An error occurred fetching organization data' },
+      { error: 'An error occurred fetching data' },
       { status: 500 }
     );
   }
 }
 
-// This function handles PATCH requests to /api/organizations/[orgId]
+// PATCH: Update organization AND relations
 export async function PATCH(
   request: Request,
   { params: paramsPromise }: { params: Promise<{ orgId: string }> }
@@ -50,27 +53,59 @@ export async function PATCH(
     const orgId = params.orgId;
     const body = await request.json();
 
-    // Get only the fields we want to update
-    const { name, description, type, status, founding } = body;
+    // Destructure fields, including the new relational IDs
+    const {
+      name,
+      description,
+      type,
+      status,
+      founding,
+      leaderId, // String or null
+      headquartersId, // String or null
+      memberIds, // Array of strings
+    } = body;
+
+    // Construct the update data dynamically
+    const updateData: any = {
+      name,
+      description,
+      type,
+      status,
+      founding,
+    };
+
+    // Handle Leader Relation
+    if (leaderId === null) {
+      updateData.leader = { disconnect: true }; // Remove leader
+    } else if (leaderId) {
+      updateData.leader = { connect: { id: leaderId } }; // Set leader
+    }
+
+    // Handle Headquarters Relation
+    if (headquartersId === null) {
+      updateData.headquarters = { disconnect: true };
+    } else if (headquartersId) {
+      updateData.headquarters = { connect: { id: headquartersId } };
+    }
+
+    // Handle Members Relation
+    if (Array.isArray(memberIds)) {
+      // 'set' replaces the entire list of members with the new list
+      updateData.members = {
+        set: memberIds.map((id: string) => ({ id })),
+      };
+    }
 
     const updatedOrganization = await prisma.organization.update({
-      where: {
-        id: orgId,
-      },
-      data: {
-        name,
-        description,
-        type,
-        status,
-        founding,
-      },
+      where: { id: orgId },
+      data: updateData,
     });
 
     return NextResponse.json(updatedOrganization);
   } catch (error) {
     console.error('--- API PATCH ORGANIZATION ERROR ---', error);
     return NextResponse.json(
-      { error: 'An error occurred saving the organization' },
+      { error: 'An error occurred saving data' },
       { status: 500 }
     );
   }
