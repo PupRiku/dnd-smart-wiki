@@ -39,7 +39,7 @@ export default function ScrybeQuillModal({
     // Modal Overlay
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-75">
       {/* Modal Content */}
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-3xl">
+      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-6">Import from Scrybe Quill</h2>
         <p className="text-gray-400 mb-6">
           Paste your curated notes below. The AI will use this text to enhance
